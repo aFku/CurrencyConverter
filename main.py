@@ -35,12 +35,35 @@ class Connection:
     def getupdate_date(self):
         return self.__last_update
 
+    def update_param(self, key, value):
+        self.__params[key] = value
+
 
 class JSONManager:
     __jsondata = None
+    __filename = None
 
-    def __init__(self, data : dict):
+    def __init__(self, data: dict, filename: str):
         self.__jsondata = json.dumps(data)
+        self.__filename = filename
 
     def save_data_tofile(self):
-        pass
+        with open(self.__filename, "w") as jsonfile:
+            jsonfile.writelines(self.__jsondata)
+
+    def update_data(self, data: dict):
+        self.__jsondata = data
+
+
+def main():
+    currency_api = API('2639ccac02d7c15359d45f9a2bc9d8ea')
+    currency_connection = Connection('http://apilayer.net/api/live', {'access_key': currency_api.getkey(),
+                                                                      'currencies': 'USD,EUR,CNY,HKD',
+                                                                      'format': 1})
+    currency_filemanager = JSONManager(currency_connection.getrequest_json(), "currency.json")
+    currency_filemanager.save_data_tofile()
+
+
+if __name__ == "__main__":
+    main()
+
