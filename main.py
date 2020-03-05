@@ -55,13 +55,52 @@ class JSONManager:
         self.__jsondata = data
 
 
+class Currency:
+    __name = None
+    __ratiodict = {}
+
+    def __init__(self, name: str, ratio: dict):
+        self.__name = name
+        self.__ratiodict = ratio
+
+    def get_ratio(self, curr: str):
+        return self.__ratiodict.setdefault(self.__name.upper() + curr.upper(), 0)
+
+
+class RatioExtractor:
+    __jsondict = None
+
+    def __init__(self, data: dict):
+        self.__jsondict = data
+
+    def getratiodict(self):
+        return self.__jsondict["quotes"]
+
+
+class TimeAnalyze:
+    __basecurrency = None
+    __relativecurrency = None
+    __API = API('2639ccac02d7c15359d45f9a2bc9d8ea')
+    __request = None
+
+    def __init__(self, base: str, relative: str ):
+        self.__basecurrency = base.upper()
+        self.__relativecurrency = relative.upper()
+        self.__request = Connection('http://apilayer.net/api/live', {'access_key': self.__API.getkey(),
+                                                                      'currencies': self.__basecurrency
+                                                                                    + "," + self.__relativecurrency,
+                                                                      'format': 1})
+
+
+
 def main():
     currency_api = API('2639ccac02d7c15359d45f9a2bc9d8ea')
     currency_connection = Connection('http://apilayer.net/api/live', {'access_key': currency_api.getkey(),
                                                                       'currencies': 'USD,EUR,CNY,HKD',
                                                                       'format': 1})
-    currency_filemanager = JSONManager(currency_connection.getrequest_json(), "currency.json")
-    currency_filemanager.save_data_tofile()
+    ratio_USD = RatioExtractor(currency_connection.getrequest_json())
+    USD = Currency("usd", ratio_USD.getratiodict())
+    print(USD.get_ratio(""))
 
 
 if __name__ == "__main__":
