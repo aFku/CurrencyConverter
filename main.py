@@ -16,29 +16,74 @@ class API:
 
 class Connection:
     __url = None
-    __params = {}
     __request = None
-    __last_update = None
+    __params = None
 
-    def __init__(self, url, params: dict):
+    def __init__(self, url: str, params: dict):
         self.__url = url
         self.__params = params
-        self.update_request()
+        self.__request = requests.get(url, params)
 
-    def update_request(self):
-        self.__request = requests.get(self.__url, params=self.__params)
-        self.__last_update = datetime.datetime.now()
+    def getrequestobj(self):
+        return self.__request
 
-    def getrequest_json(self):
-        return self.__request.json()
+    def geturl(self):
+        return self.__url
 
-    def getupdate_date(self):
-        return self.__last_update
-
-    def update_param(self, key, value):
-        self.__params[key] = value
+    def getparams(self):
+        return self.__params
 
 
+class CurrencyConnection(Connection):
+
+    __API = API('2639ccac02d7c15359d45f9a2bc9d8ea')
+    __base = None
+    __relative = None
+    __date = None
+
+    def __init__(self, base_curr: str, relative_currs: list, day: int, month: int, year: int):
+        self.__base = base_curr.upper()
+        self.__relative = relative_currs
+        self.__date = str(year) + "-" + str(month) + "-" + str(day)
+        super().__init__('http://apilayer.net/api/live', {'access_key': self.__API.getkey(),
+                                                          'currencies': self.__base + "," + ",".join(self.__relative),
+                                                          'date': self.__date,
+                                                          'format': 1})
+
+    def getapikey(self):
+        return self.__API.getkey()
+
+    def getbasecurrency(self):
+        return self.__base
+
+    def getrelativecurrencys(self):
+        return self.__relative
+
+    def getdate(self):
+        return self.__date
+
+    def getdatejson(self):
+        return super().getrequestobj().json()
+
+    def getratio(self, currency: str):
+        currency = currency.upper()
+        if currency in [up.upper() for up in self.__relative]:
+            try:
+                return self.getdatejson()["quotes"][self.__base + currency]
+            except KeyError:
+                raise ValueError("No " + currency + " in currency database!")
+        else:
+            raise ValueError("No " + currency + " in currency database!")
+
+
+class CurrencyTimeAnalyze:
+
+    def getperiodratio(self, currency, first_d: int, first_m: int, first):
+        pass
+
+
+
+"""
 class JSONManager:
     __jsondata = None
     __filename = None
@@ -53,56 +98,19 @@ class JSONManager:
 
     def update_data(self, data: dict):
         self.__jsondata = data
-
-
-class Currency:
-    __name = None
-    __ratiodict = {}
-
-    def __init__(self, name: str, ratio: dict):
-        self.__name = name
-        self.__ratiodict = ratio
-
-    def get_ratio(self, curr: str):
-        return self.__ratiodict.setdefault(self.__name.upper() + curr.upper(), 0)
-
-
-class RatioExtractor:
-    __jsondict = None
-
-    def __init__(self, data: dict):
-        self.__jsondict = data
-
-    def getratiodict(self):
-        return self.__jsondict["quotes"]
-
-
-class TimeAnalyze:
-    __basecurrency = None
-    __relativecurrency = None
-    __API = API('2639ccac02d7c15359d45f9a2bc9d8ea')
-    __request = None
-
-    def __init__(self, base: str, relative: str ):
-        self.__basecurrency = base.upper()
-        self.__relativecurrency = relative.upper()
-        self.__request = Connection('http://apilayer.net/api/live', {'access_key': self.__API.getkey(),
-                                                                      'currencies': self.__basecurrency
-                                                                                    + "," + self.__relativecurrency,
-                                                                      'format': 1})
+"""
 
 
 
 def main():
-    currency_api = API('2639ccac02d7c15359d45f9a2bc9d8ea')
-    currency_connection = Connection('http://apilayer.net/api/live', {'access_key': currency_api.getkey(),
-                                                                      'currencies': 'USD,EUR,CNY,HKD',
-                                                                      'format': 1})
-    ratio_USD = RatioExtractor(currency_connection.getrequest_json())
-    USD = Currency("usd", ratio_USD.getratiodict())
-    print(USD.get_ratio(""))
-
-
+    #USDtoEURGBPPLN = CurrencyConnection("usd", ["pln"], 7, 3, 2020)
+    #print(USDtoEURGBPPLN.getratio("PLN"))
+    USDtoPLN = Connection('http://apilayer.net/api/historical', {'access_key': '2639ccac02d7c15359d45f9a2bc9d8ea',
+                                                          'currencies': 'USD,PLN',
+                                                          'date': '2020-03-07',
+                                                          'format': 1})
+    print(USDtoPLN.getrequestobj().json())
+    print(type(str(datetime.datetime.now().date() - datetime.timedelta(days=100))))
 if __name__ == "__main__":
     main()
 
