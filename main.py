@@ -37,49 +37,72 @@ class Connection:
 class CurrencyConnection(Connection):
 
     __API = API('2639ccac02d7c15359d45f9a2bc9d8ea')
-    __base = None
-    __relative = None
-    __date = None
+    _base = None
+    _relative = None
 
-    def __init__(self, base_curr: str, relative_currs: list, day: int, month: int, year: int):
-        self.__base = base_curr.upper()
-        self.__relative = relative_currs
-        self.__date = str(year) + "-" + str(month) + "-" + str(day)
-        super().__init__('http://apilayer.net/api/live', {'access_key': self.__API.getkey(),
-                                                          'currencies': self.__base + "," + ",".join(self.__relative),
-                                                          'date': self.__date,
-                                                          'format': 1})
+    def __init__(self, url, params):
+        super().__init__(url, params)
 
     def getapikey(self):
         return self.__API.getkey()
 
     def getbasecurrency(self):
-        return self.__base
+        return self._base
 
     def getrelativecurrencys(self):
-        return self.__relative
-
-    def getdate(self):
-        return self.__date
+        return self._relative
 
     def getdatejson(self):
         return super().getrequestobj().json()
 
     def getratio(self, currency: str):
         currency = currency.upper()
-        if currency in [up.upper() for up in self.__relative]:
+        if currency in [up.upper() for up in self._relative]:
             try:
-                return self.getdatejson()["quotes"][self.__base + currency]
+                return self.getdatejson()["quotes"][self._base + currency]
             except KeyError:
                 raise ValueError("No " + currency + " in currency database!")
         else:
             raise ValueError("No " + currency + " in currency database!")
 
 
+class CurrencyLive(CurrencyConnection):
+
+    def __init__(self, base: str, relative: list):
+        self._base = base
+        self._relative = relative
+        params = {'access_key': super().getapikey(),
+                  'currencies': super().getbasecurrency() + "," + ",".join(super().getrelativecurrencys()),
+                  'format': 1}
+        super().__init__('http://apilayer.net/api/live',  params)
+
+
+class CurrencyHistorical(CurrencyConnection):
+
+    def __init__(self, base: str, relative: list, date: datetime.date):
+        self._base = base
+        self._relative = relative
+        params = {'access_key': super().getapikey(),
+                  'currencies': super().getbasecurrency() + "," + ",".join(super().getrelativecurrencys()),
+                  'date': str(date),
+                  'format': 1}
+        super().__init__('http://apilayer.net/api/historical',  params)
+
+
 class CurrencyTimeAnalyze:
 
-    def getperiodratio(self, currency, first_d: int, first_m: int, first):
-        pass
+    @staticmethod
+    def getperiodratio(base: str, relative: list, start_date: datetime.date, end_date: datetime.date):
+        date = start_date
+        result = dict([(curr, []) for curr in relative])
+        while date != end_date:
+            tmpCurrency = CurrencyHistorical(base, relative, date)
+            for curr in relative:
+                result[curr].append((tmpCurrency.getratio(curr), str(date)))
+            date += datetime.timedelta(days=1)
+        for key in result.keys():
+            result[key] = tuple(result[key])
+        return result
 
 
 
@@ -103,14 +126,11 @@ class JSONManager:
 
 
 def main():
-    #USDtoEURGBPPLN = CurrencyConnection("usd", ["pln"], 7, 3, 2020)
-    #print(USDtoEURGBPPLN.getratio("PLN"))
-    USDtoPLN = Connection('http://apilayer.net/api/historical', {'access_key': '2639ccac02d7c15359d45f9a2bc9d8ea',
-                                                          'currencies': 'USD,PLN',
-                                                          'date': '2020-03-07',
-                                                          'format': 1})
-    print(USDtoPLN.getrequestobj().json())
-    print(type(str(datetime.datetime.now().date() - datetime.timedelta(days=100))))
+    relative = ["PLN", "GBP", "USD"]
+    xd = CurrencyTimeAnalyze.getperiodratio("USD", relative, datetime.datetime.now().date() - datetime.timedelta(days=10),
+                                            datetime.datetime.now().date() - datetime.timedelta(days=1))
+    print(xd)
+    print(datetime.datetime.now().date() - datetime.timedelta(days=1))
 if __name__ == "__main__":
     main()
 
