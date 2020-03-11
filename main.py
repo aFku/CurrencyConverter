@@ -1,6 +1,8 @@
 import requests
 import datetime
 import json
+import matplotlib.pyplot as plt
+
 
 
 class API:
@@ -91,46 +93,45 @@ class CurrencyHistorical(CurrencyConnection):
 
 class CurrencyTimeAnalyze:
 
-    @staticmethod
-    def getperiodratio(base: str, relative: list, start_date: datetime.date, end_date: datetime.date):
+    # Change to time frame queries https://currencylayer.com/documentation
+
+    __result = {}
+    __base = None
+    __relative = None
+    __start_date = None
+    __end_date = None
+
+    def __init__(self, base: str, relative: list, start_date: datetime.date, end_date: datetime.date):
+        self.__base = base
+        self.__relative = relative
+        self.__start_date = start_date
+        self.__end_date = end_date
+
         date = start_date
-        result = dict([(curr, []) for curr in relative])
+        self.__result = dict([(curr, []) for curr in relative])
         while date != end_date:
             tmpCurrency = CurrencyHistorical(base, relative, date)
             for curr in relative:
-                result[curr].append((tmpCurrency.getratio(curr), str(date)))
+                self.__result[curr].append((tmpCurrency.getratio(curr), str(date)))
             date += datetime.timedelta(days=1)
-        for key in result.keys():
-            result[key] = tuple(result[key])
-        return result
+        for key in self.__result.keys():
+            self.__result[key] = tuple(self.__result[key])
 
-
-
-"""
-class JSONManager:
-    __jsondata = None
-    __filename = None
-
-    def __init__(self, data: dict, filename: str):
-        self.__jsondata = json.dumps(data)
-        self.__filename = filename
-
-    def save_data_tofile(self):
-        with open(self.__filename, "w") as jsonfile:
-            jsonfile.writelines(self.__jsondata)
-
-    def update_data(self, data: dict):
-        self.__jsondata = data
-"""
-
+    def drawgraph_periodratio(self, curr: str):
+        axis_x = [date[1] for date in self.__result[curr]]
+        axis_y = [value[0] for value in self.__result[curr]]
+        plt.plot(axis_x, axis_y)
+        plt.xlabel("Date")
+        plt.ylabel("Value")
+        plt.title("Ratio for " + self.__base + " : " + curr)
+        plt.show()
 
 
 def main():
     relative = ["PLN", "GBP", "USD"]
-    xd = CurrencyTimeAnalyze.getperiodratio("USD", relative, datetime.datetime.now().date() - datetime.timedelta(days=10),
+    xd = CurrencyTimeAnalyze("USD", relative, datetime.datetime.now().date() - datetime.timedelta(days=10),
                                             datetime.datetime.now().date() - datetime.timedelta(days=1))
-    print(xd)
-    print(datetime.datetime.now().date() - datetime.timedelta(days=1))
+    xd.drawgraph_periodratio("PLN")
 if __name__ == "__main__":
     main()
 
